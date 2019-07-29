@@ -72,3 +72,6 @@ export { safeWindow } from "./events/utils/window"
 export { AnimatePresenceProps } from "./components/AnimatePresence/types"
 export { AnimatePresence } from "./components/AnimatePresence"
 export { isValidMotionProp } from "./motion/utils/valid-prop"
+// exp
+export { useBetween } from "./value/use-between"
+export { useRelative } from "./value/use-relative"
