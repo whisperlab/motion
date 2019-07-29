@@ -1,17 +1,14 @@
 import { useCallback, useEffect } from "react"
 import { MotionValue } from "./"
 import { isMotionValue } from "./utils/is-motion-value"
-import { useOnChange } from "../value/use-on-change"
 import { useMotionValue } from "../value/use-motion-value"
-import { transform } from "../utils/transform"
 
-type Value<T> = MotionValue<T> | number | string
-
-const toValue: <T>(v: T) => T = v => (isMotionValue(v) ? v.get() : v)
+const toValue: <T>(v: MotionValue<T> | T) => T = v =>
+    isMotionValue(v) ? v.get() : v
 
 export function useRelative<T>(
-    callback: (...values: Value<T>[]) => number,
-    ...values: (Value<T>)[]
+    callback: (...values: T[]) => T,
+    ...values: (MotionValue<T> | T)[]
 ) {
     const calc = useCallback(
         () => {
@@ -21,20 +18,24 @@ export function useRelative<T>(
         [callback, values]
     )
 
+    // Create new motion value
     const value = useMotionValue(calc())
 
-    useEffect(() => {
-        let cancels: any[] = []
+    // Update the
+    const update = useCallback(() => value.set(calc()), [])
 
-        values.forEach(v => {
-            if (isMotionValue(v)) {
-                cancels.push(v.onChange(() => value.set(calc())))
-            }
-        })
-        return () => {
-            cancels.forEach(c => c())
-        }
-    }, [])
+    // When motion values values change,
+    // remove / add update change listeners
+    useEffect(
+        () => {
+            const rs = values.map((v: MotionValue<T>) => v.onChange(update))
+            return () => rs.forEach(remove => remove())
+        },
+        [values.filter(v => isMotionValue(v))]
+    )
+
+    // When non-motion values values change, update
+    useEffect(() => update, [values.filter(v => !isMotionValue(v))])
 
     return value
 }

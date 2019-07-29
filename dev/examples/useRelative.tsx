@@ -49,18 +49,9 @@ export const App = () => {
     const dragXc = useMotionValue(560)
     const dragYc = useMotionValue(450)
 
-    const x = useRelative(
-        (a: number, b: number, c: number) => (a + b + c) / 3,
-        dragXa,
-        dragXb,
-        dragXc
-    )
-    const y = useRelative(
-        (a: number, b: number, c: number) => (a + b + c) / 3,
-        dragYa,
-        dragYb,
-        dragYc
-    )
+    const x = useRelative((a, b, c) => (a + b + c) / 3, dragXa, dragXb, dragXc)
+
+    const y = useRelative((a, b, c) => (a + b + c) / 3, dragYa, dragYb, dragYc)
 
     return (
         <div
