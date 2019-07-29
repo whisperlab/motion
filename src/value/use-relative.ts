@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useMemo } from "react"
 import { MotionValue } from "./"
 import { isMotionValue } from "./utils/is-motion-value"
 import { useMotionValue } from "../value/use-motion-value"
@@ -10,32 +10,46 @@ export function useRelative<T>(
     callback: (...values: T[]) => T,
     ...values: (MotionValue<T> | T)[]
 ) {
-    const calc = useCallback(
-        () => {
-            const vs = values.map(toValue)
-            return callback(...vs)
-        },
+    // Compute the motion values's value by running
+    // current values of its related values through
+    // the callback function
+    const getComputedValue = useCallback(
+        () => callback(...values.map(toValue)),
         [callback, values]
     )
 
     // Create new motion value
-    const value = useMotionValue(calc())
+    const value = useMotionValue(getComputedValue())
 
-    // Update the
-    const update = useCallback(() => value.set(calc()), [])
+    // Calllback to update the motion value
+    const compute = useCallback(() => value.set(getComputedValue()), [])
 
-    // When motion values values change,
-    // remove / add update change listeners
-    useEffect(
-        () => {
-            const rs = values.map((v: MotionValue<T>) => v.onChange(update))
-            return () => rs.forEach(remove => remove())
-        },
-        [values.filter(v => isMotionValue(v))]
+    // Partition the values into motion values / non motion values
+    const [mvs, nmvs]: [MotionValue<T>[], T[]] = useMemo(
+        () =>
+            values.reduce(
+                (acc, val) => {
+                    acc[isMotionValue(val) ? 0 : 1].push(val)
+                    return acc
+                },
+                [[] as any[], [] as any[]]
+            ),
+        [values]
     )
 
-    // When non-motion values values change, update
-    useEffect(() => update, [values.filter(v => !isMotionValue(v))])
+    // When motion values values c
+    // Change, update listeners
+    useEffect(
+        () => {
+            const rs = mvs.map(v => v.onChange(compute))
+            return () => rs.forEach(remove => remove())
+        },
+        [mvs]
+    )
+
+    // When non-motion values
+    //  change, update
+    useEffect(compute, [nmvs])
 
     return value
 }
