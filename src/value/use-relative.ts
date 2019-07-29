@@ -21,10 +21,10 @@ export function useRelative<T>(
     // Create new motion value
     const value = useMotionValue(getComputedValue())
 
-    // Calllback to update the motion value
+    // Update the motion value with the computed value
     const compute = useCallback(() => value.set(getComputedValue()), [])
 
-    // Partition the values into motion values / non motion values
+    // Partition the values into motion values / non-motion values
     const [mvs, nmvs]: [MotionValue<T>[], T[]] = useMemo(
         () =>
             values.reduce(
@@ -37,10 +37,11 @@ export function useRelative<T>(
         [values]
     )
 
-    // When motion values values c
-    // Change, update listeners
+    // When motion values values
+    // change, update listeners
     useEffect(
         () => {
+            compute()
             const rs = mvs.map(v => v.onChange(compute))
             return () => rs.forEach(remove => remove())
         },
@@ -48,7 +49,7 @@ export function useRelative<T>(
     )
 
     // When non-motion values
-    //  change, update
+    // change, compute a new value
     useEffect(compute, [nmvs])
 
     return value
