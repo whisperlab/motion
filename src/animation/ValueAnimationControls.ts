@@ -498,6 +498,8 @@ export class ValueAnimationControls<P extends {} = {}, V extends {} = {}> {
             )
             target = animatable.target
             transitionEnd = animatable.transitionEnd
+
+            this.checkForNewValues(target)
         }
 
         if (priority) {

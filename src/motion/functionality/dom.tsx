@@ -1,6 +1,6 @@
 // TODO: Move this file to `src/dom/`
 import * as React from "react"
-import { createElement, ComponentType, CSSProperties } from "react"
+import { createElement, useEffect, ComponentType, CSSProperties } from "react"
 import styler, { buildSVGAttrs } from "stylefire"
 import { MotionProps } from "../types"
 import { buildStyleAttr } from "../utils/use-styles"
@@ -14,6 +14,7 @@ import { resolveCurrent } from "../../value/utils/resolve-values"
 import { Layout } from "./layout"
 import { isValidMotionProp } from "../utils/valid-prop"
 import { getAnimationComponent } from "./animation"
+import { invariant } from "hey-listen"
 
 function stripMotionProps(props: MotionProps) {
     const domProps = {}
@@ -55,6 +56,22 @@ export function createDomMotionConfig<P = MotionProps>(
             const staticVisualStyles = isSVG
                 ? buildSVGProps(values, style)
                 : { style: buildStyleAttr(values, style, isStatic) }
+
+            useEffect(() => {
+                invariant(
+                    ref.current instanceof Element,
+                    "No `ref` found. Ensure components created with `motion.custom` forward refs using `React.forwardRef`"
+                )
+
+                const domStyler = styler(ref.current as Element, {
+                    preparseOutput: false,
+                    enableHardwareAcceleration: !isStatic,
+                })
+
+                values.mount((key, value) => domStyler.set(key, value))
+
+                return () => values.unmount()
+            }, [])
 
             return createElement<any>(Component, {
                 ...forwardProps,

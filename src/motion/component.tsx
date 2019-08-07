@@ -1,11 +1,7 @@
 import * as React from "react"
 import { useContext, forwardRef, Ref, RefObject } from "react"
 import { useExternalRef } from "./utils/use-external-ref"
-import {
-    useMotionValues,
-    MountMotionValues,
-    MotionValuesMap,
-} from "./utils/use-motion-values"
+import { useMotionValues, MotionValuesMap } from "./utils/use-motion-values"
 import { useMotionStyles } from "./utils/use-styles"
 import { useValueAnimationControls } from "../animation/use-value-animation-controls"
 import { MotionContext, useMotionContext } from "./context/MotionContext"
@@ -94,11 +90,6 @@ export const createMotionComponent = <P extends {}>({
 
         return (
             <>
-                <MountMotionValues
-                    ref={ref}
-                    values={values}
-                    isStatic={isStatic}
-                />
                 {functionality}
                 <MotionContext.Provider value={context}>
                     {renderedComponent}

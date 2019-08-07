@@ -1,8 +1,6 @@
-import { forwardRef, useEffect, memo, RefObject } from "react"
 import { MotionValue } from "../../value"
-import styler, { createStylerFactory, Styler } from "stylefire"
+import { createStylerFactory, Styler } from "stylefire"
 import { OnUpdate, MotionProps, TransformTemplate } from "../types"
-import { invariant } from "hey-listen"
 import { useConstant } from "../../utils/use-constant"
 import { isMotionValue } from "../../value/utils/is-motion-value"
 
@@ -143,33 +141,3 @@ export const useMotionValues = (props: MotionProps) => {
 
     return motionValues
 }
-
-/**
- * `useEffect` gets resolved bottom-up. We defer some optional functionality to child
- * components, so to ensure everything runs correctly we export the ref-binding logic
- * to a new component rather than in `useMotionValues`.
- */
-const MountMotionValuesComponent = (
-    { values, isStatic }: { values: MotionValuesMap; isStatic: boolean },
-    ref: RefObject<Element>
-) => {
-    useEffect(() => {
-        invariant(
-            ref.current instanceof Element,
-            "No `ref` found. Ensure components created with `motion.custom` forward refs using `React.forwardRef`"
-        )
-
-        const domStyler = styler(ref.current as Element, {
-            preparseOutput: false,
-            enableHardwareAcceleration: !isStatic,
-        })
-
-        values.mount((key, value) => domStyler.set(key, value))
-
-        return () => values.unmount()
-    }, [])
-
-    return null
-}
-
-export const MountMotionValues = memo(forwardRef(MountMotionValuesComponent))
