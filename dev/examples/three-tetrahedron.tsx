@@ -6,6 +6,17 @@ import { Canvas, useRender } from "react-three-fiber"
 import { useAnimation } from "@framer"
 import { motion } from "@framer/renderers/three"
 
+/**
+ * TODOs
+ *
+ * - Read origin from prop ie position x -> position[0]
+ * - Add whileTap and whileHover
+ * - Convert MotionValues into props for setting values on render
+ * - Default scale to 1
+ * - Inject MotionValues via props, including position={[x, y, z]} maybe later add convinience prop mapping
+ * - Types
+ */
+
 const spring = { type: "spring", mass: 10, stiffness: 1000, damping: 300 }
 
 function Octahedron() {
