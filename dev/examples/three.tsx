@@ -1,40 +1,43 @@
 // Example taken from https://codesandbox.io/embed/9y8vkjykyy
 import * as THREE from "three/src/Three"
-import React, { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect, useMemo } from "react"
 // A THREE.js React renderer, see: https://github.com/drcmda/react-three-fiber
 import { Canvas, useRender } from "react-three-fiber"
+import { useAnimation } from "@framer"
 import { motion } from "@framer/renderers/three"
+
+const spring = { type: "spring", mass: 10, stiffness: 1000, damping: 300 }
 
 function Octahedron() {
     const [active, setActive] = useState(false)
     const [hovered, setHover] = useState(false)
     const vertices = [[-1, 0, 0], [0, 1, 0], [1, 0, 0], [0, -1, 0], [-1, 0, 0]]
 
-    // const { color, pos, ...props } = useSpring({
-    //     color: active ? "hotpink" : "white",
-    //     pos: active ? [0, 0, 2] : [0, 0, 0],
-    //     "material-opacity": hovered ? 0.6 : 0.25,
-    //     scale: active ? [1.5, 1.5, 1.5] : [1, 1, 1],
-    //     rotation: active
-    //         ? [THREE.Math.degToRad(180), 0, THREE.Math.degToRad(45)]
-    //         : [0, 0, 0],
-    //     config: { mass: 10, tension: 1000, friction: 300, precision: 0.00001 },
-    // })
     return (
         <group>
-            <motion.line animate={{ scale: 3 }}>
+            <motion.line animate={{ z: active ? 2 : 0 }} transition={spring}>
                 <geometry
                     attach="geometry"
                     vertices={vertices.map(v => new THREE.Vector3(...v))}
                 />
-                <lineBasicMaterial attach="material" />
+                <motion.lineBasicMaterial
+                    attach="material"
+                    initial={false}
+                    animate={{ color: active ? "#FF69B4" : "#fff" }}
+                    transition={spring}
+                />
             </motion.line>
             <motion.mesh
                 onClick={e => setActive(!active)}
                 onPointerOver={e => setHover(true)}
                 onPointerOut={e => setHover(false)}
-                animate={{ x: 1, rotate: 180, "material-opacity": 0.5 }}
-                transition={{ delay: 0.3, duration: 2 }}
+                animate={{
+                    scale: active ? 1.5 : 1,
+                    rotateX: active ? THREE.Math.degToRad(180) : 0,
+                    rotateZ: active ? THREE.Math.degToRad(45) : 0,
+                    "material-opacity": hovered ? 0.6 : 0.25,
+                }}
+                transition={spring}
             >
                 <octahedronGeometry attach="geometry" />
                 <meshStandardMaterial
@@ -47,12 +50,51 @@ function Octahedron() {
     )
 }
 
+function Stars() {
+    const controls = useAnimation()
+    let theta = 0
+    useRender(() => {
+        controls.set({
+            rotate: 5 * Math.sin(THREE.Math.degToRad((theta += 0.1))),
+            scale: Math.cos(THREE.Math.degToRad(theta * 2)),
+        })
+    })
+    const [geo, mat, vertices, coords] = useMemo(() => {
+        const geo = new THREE.SphereBufferGeometry(1, 10, 10)
+        const mat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color("lightblue"),
+        })
+        const coords = new Array(2000)
+            .fill(0)
+            .map(i => [
+                Math.random() * 800 - 400,
+                Math.random() * 800 - 400,
+                Math.random() * 800 - 400,
+            ])
+        return [geo, mat, vertices, coords]
+    }, [])
+
+    return (
+        <motion.group animate={controls}>
+            {coords.map(([p1, p2, p3], i) => (
+                <mesh
+                    key={i}
+                    geometry={geo}
+                    material={mat}
+                    position={[p1, p2, p3]}
+                />
+            ))}
+        </motion.group>
+    )
+}
+
 export const App = () => (
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}>
         <Canvas>
             <ambientLight color="lightblue" />
             <pointLight color="white" intensity={1} position={[10, 10, 10]} />
             <Octahedron />
+            <Stars />
         </Canvas>
         <style>{`* {
   box-sizing: border-box;
