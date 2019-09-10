@@ -1,5 +1,5 @@
 import "../../../jest.setup"
-import { render } from "react-testing-library"
+import { render } from "@testing-library/react"
 import { motion } from "../"
 import * as React from "react"
 import { motionValue } from "../../value"
@@ -34,6 +34,22 @@ describe("static prop", () => {
 
         expect(container.firstChild as Element).toHaveStyle(
             "transform: translateX(200px)"
+        )
+    })
+
+    test("it removes unused styles", () => {
+        const { container, rerender } = render(
+            <motion.div static style={{ z: 100 }} />
+        )
+
+        expect(container.firstChild as Element).toHaveStyle(
+            "transform: translateZ(100px)"
+        )
+
+        rerender(<motion.div static style={{}} />)
+
+        expect(container.firstChild as Element).not.toHaveStyle(
+            "transform: translateZ(100px)"
         )
     })
 

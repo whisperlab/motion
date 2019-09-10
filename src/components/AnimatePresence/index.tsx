@@ -1,5 +1,5 @@
 import {
-    useState,
+    useContext,
     useRef,
     isValidElement,
     cloneElement,
@@ -10,6 +10,28 @@ import {
 } from "react"
 import * as React from "react"
 import { AnimatePresenceProps } from "./types"
+import { MotionContext, ExitProps } from "../../motion/context/MotionContext"
+import { SyncLayoutContext } from "../../components/SyncLayout"
+import { useForceUpdate } from "../../utils/use-force-update"
+
+interface PresenceChildProps {
+    children: ReactElement<any>
+    exitProps?: ExitProps | undefined
+}
+
+const PresenceChild = ({ children, exitProps }: PresenceChildProps) => {
+    let context = useContext(MotionContext)
+
+    // Create a new `value` in all instances to ensure `motion` children re-render
+    // and detect any layout changes that might have occurred.
+    context = exitProps ? { ...context, exitProps } : { ...context }
+
+    return (
+        <MotionContext.Provider value={context}>
+            {children}
+        </MotionContext.Provider>
+    )
+}
 
 type ComponentKey = string | number
 
@@ -59,10 +81,12 @@ function onlyElements(children: ReactNode): ReactElement<any>[] {
  * When adding/removing more than a single child component, every component
  * **must** be given a unique `key` prop.
  *
+ * You can propagate exit animations throughout a tree by using variants.
+ *
  * @library
  *
- * The immediate children of `AnimatePresence` should be components that accept `animate`, `exit`
- * and `onAnimationComplete` props, like `Frame`.
+ * You can use any component(s) within `AnimatePresence`, but the first `Frame` in each should
+ * have an `exit` property defined.
  *
  * ```jsx
  * import { Frame, AnimatePresence } from 'framer'
@@ -84,12 +108,10 @@ function onlyElements(children: ReactNode): ReactElement<any>[] {
  * }
  * ```
  *
- * You can use custom components, as long as you ensure to forward `animate` and `onAnimationComplete`.
- *
  * @motion
  *
- * The immediate children of `AnimatePresence` should be `motion` components. You can use custom components,
- * as long as you ensure to forward `animate` and `onAnimationComplete` to the top-level `motion` component.
+ * You can use any component(s) within `AnimatePresence`, but the first `motion` component in each should
+ * have an `exit` property defined.
  *
  * ```jsx
  * import { motion, AnimatePresence } from 'framer-motion'
@@ -116,8 +138,13 @@ export const AnimatePresence: FunctionComponent<AnimatePresenceProps> = ({
     initial = true,
     onExitComplete,
     exitBeforeEnter,
-    _syncLayout,
 }) => {
+    // We want to force a re-render once all exiting animations have finished. We
+    // either use a local forceUpdate function, or one from a parent context if it exists.
+    const localForceUpdate = useForceUpdate()
+    const contextForceUpdate = useContext(SyncLayoutContext)
+    const forceUpdate = contextForceUpdate || localForceUpdate
+
     const isInitialRender = useRef(true)
 
     // Filter out any children that aren't ReactElements. We can only track ReactElements with a props.key
@@ -131,12 +158,6 @@ export const AnimatePresence: FunctionComponent<AnimatePresenceProps> = ({
     const allChildren = useRef(new Map<ComponentKey, ReactElement<any>>())
         .current
 
-    // Use a running state counter to allow us to force a re-render once all
-    // exiting animations have settled. For performance reasons it might also be
-    // necessary to track entering animations too, but this should be good enough
-    // for the majority use-cases ie slideshows, modals etc.
-    const [forcedRenderCount, setForcedRenderCount] = useState(0)
-
     // A living record of all currently exiting components.
     const exiting = useRef(new Set<ComponentKey>()).current
 
@@ -147,15 +168,16 @@ export const AnimatePresence: FunctionComponent<AnimatePresenceProps> = ({
     if (isInitialRender.current) {
         isInitialRender.current = false
 
-        // If `initial` is `true`, return child unaltered to carry out their individually-defined behaviour.
-        if (initial) return <>{filteredChildren}</>
-
-        // Otherwise, suppress mount animations by setting `initial: false` on all children.
         return (
             <>
-                {filteredChildren.map(child =>
-                    cloneElement(child, { initial: false })
-                )}
+                {filteredChildren.map(child => (
+                    <PresenceChild
+                        key={getChildKey(child)}
+                        exitProps={initial ? undefined : { initial: false }}
+                    >
+                        {child}
+                    </PresenceChild>
+                ))}
             </>
         )
     }
@@ -195,40 +217,48 @@ export const AnimatePresence: FunctionComponent<AnimatePresenceProps> = ({
         const child = allChildren.get(key)
         if (!child) return
 
-        const { animate, exit, onAnimationComplete } = child.props
-        const props = typeof custom !== "undefined" ? { custom } : {}
         const insertionIndex = presentKeys.indexOf(key)
+
+        const onExit = () => {
+            exiting.delete(key)
+
+            // Remove this child from the present children
+            const removeIndex = presentChildren.current.findIndex(
+                child => child.key === key
+            )
+            presentChildren.current.splice(removeIndex, 1)
+
+            // Defer re-rendering until all exiting children have indeed left
+            if (!exiting.size) {
+                presentChildren.current = filteredChildren
+                forceUpdate()
+                onExitComplete && onExitComplete()
+            }
+        }
+
+        const exitProps = {
+            custom,
+            isExiting: true,
+            onExitComplete: onExit,
+        }
 
         childrenToRender.splice(
             insertionIndex,
             0,
-            cloneElement(child, {
-                ...props,
-                animate: exit || animate,
-                onAnimationComplete: () => {
-                    exiting.delete(key)
+            <PresenceChild key={getChildKey(child)} exitProps={exitProps}>
+                {child}
+            </PresenceChild>
+        )
+    })
 
-                    // Remove this child from the present children
-                    const removeIndex = presentChildren.current.findIndex(
-                        child => child.key === key
-                    )
-                    presentChildren.current.splice(removeIndex, 1)
-                    onAnimationComplete && onAnimationComplete()
-
-                    // Defer re-rendering until all exiting children have indeed left
-                    if (!exiting.size) {
-                        presentChildren.current = filteredChildren
-
-                        if (_syncLayout) {
-                            _syncLayout()
-                        } else {
-                            setForcedRenderCount(forcedRenderCount + 1)
-                        }
-
-                        onExitComplete && onExitComplete()
-                    }
-                },
-            })
+    // Add `MotionContext` even to children that don't need it to ensure we're rendering
+    // the same tree between renders
+    childrenToRender = childrenToRender.map(child => {
+        const key = child.key as string | number
+        return exiting.has(key) ? (
+            child
+        ) : (
+            <PresenceChild key={getChildKey(child)}>{child}</PresenceChild>
         )
     })
 

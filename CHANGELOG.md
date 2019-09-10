@@ -2,11 +2,94 @@
 
 Framer Motion adheres to [Semantic Versioning](http://semver.org/).
 
-## Unreleased
+## [1.6.8] 2019-08-30
+
+## Fix
+
+-   Fixed exit animation when `animate={useAnimation()}`.
+-   Fixed exit animations when another animation is playing concurrently and finishes first.
+
+## [1.6.7] 2019-08-30
+
+## Fix
+
+-   Restoring React-style behaviour for transform `style` properties when a component `isStatic`.
+
+## [1.6.6] 2019-08-29
+
+## Fix
+
+-   Adding `@emotion/is-prop-valid` as an optional dependency to ensure we filter out arbitrary props passed along by Emotion and Styled Components.
+
+## [1.6.5] 2019-08-27
+
+## Fix
+
+-   Value-specific `delay`.
+
+## [1.6.4] 2019-08-27
+
+## Upgrade
+
+-   `stylefire@6.0.10`
+
+## [1.6.3] 2019-08-19
+
+## Fixed
+
+-   Ensuring `onDragEnd` always fires after if `onDragStart` fired.
+
+## [1.6.2] 2019-08-14
+
+## Fixed
+
+-   Invalid property in SVGs.
+
+## [1.6.1] 2019-08-12
+
+## Fixed
+
+-   Making `useInvertedScale` public and changing const to function.
+
+## [1.6.0] 2019-08-12
+
+## Added
+
+-   `layoutTransition`
+-   `EventInfo` now passed as second argument to `onHoverStart` and `onHoverEnd`.
+-   `useDomEvent` hook for attaching events directly to an `Element`.
+
+## Fixed
+
+-   Simplifying event system.
+-   Applying values in `animate.transitionEnd` if not initial animation.
+-   Made drag constraints only apply if a value isn't animating.
+-   Don't throw error if `useInvertedScale` is provided arguments.
+
+## [1.5.0] 2019-08-02
 
 ### Added
 
--   `AnimatePresence.exitBeforeEnter` prop as beta.
+-   `useInvertedScale` for inverting parent scales.
+
+## [1.4.2] 2019-07-31
+
+### Fixed
+
+-   `positionTransition` on exiting components within `AnimatePresence`.
+
+## [1.4.1] 2019-07-30
+
+### Fixed
+
+-   Pan and drag gestures with `PointerEvent`.
+
+## [1.4.0] 2019-07-29
+
+### Added
+
+-   `AnimatePresence.exitBeforeEnter`.
+-   Added explicit support for custom components as children of `AnimatePresence`.
 
 ### Fixed
 
@@ -15,6 +98,7 @@ Framer Motion adheres to [Semantic Versioning](http://semver.org/).
 -   Ensuring unmounting components don't call `onAnimationComplete`.
 -   Adding error message when no initial value is set, or can be read or inferred.
 -   Ensuring color alpha is always within bounds.
+-   Ensuring variants propagate on unmount.
 
 ## [1.3.0] 2019-07-24
 

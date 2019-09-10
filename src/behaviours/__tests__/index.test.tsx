@@ -3,46 +3,11 @@ import { useState } from "react"
 import "../../../jest.setup"
 import { motion } from "../../"
 import { motionValue, MotionValue } from "../../value"
-import { MotionPlugins } from "../../motion/context/MotionPluginContext"
-import { render } from "react-testing-library"
-import { fireEvent } from "dom-testing-library"
+import { render } from "@testing-library/react"
+import { fireEvent } from "@testing-library/dom"
 import sync from "framesync"
-import { Constraints } from "../use-draggable"
-
-type Point = {
-    x: number
-    y: number
-}
-
-const pos: Point = {
-    x: 0,
-    y: 0,
-}
-
-export const drag = (element: any) => {
-    pos.x = 0
-    pos.y = 0
-    fireEvent.mouseDown(element)
-
-    const controls = {
-        to: (x: number, y: number) => {
-            pos.x = x
-            pos.y = y
-            fireEvent.mouseMove(document.body, { buttons: 1 })
-
-            return controls
-        },
-        end: () => {
-            fireEvent.mouseUp(element)
-        },
-    }
-
-    return controls
-}
-
-export const MockDrag = ({ children }: { children: React.ReactNode }) => (
-    <MotionPlugins transformPagePoint={() => pos}>{children}</MotionPlugins>
-)
+import { Constraints } from "../use-drag"
+import { MockDrag, drag, Point } from "./utils"
 
 describe("dragging", () => {
     test("dragStart fires", async () => {
@@ -107,7 +72,7 @@ describe("dragging", () => {
             const { container, rerender } = render(<Component />)
             rerender(<Component />)
 
-            const pointer = drag(container.firstChild).to(0, 500)
+            const pointer = drag(container.firstChild).to(0, 0)
 
             sync.postRender(() => {
                 pointer.end()
@@ -116,6 +81,41 @@ describe("dragging", () => {
         })
 
         return expect(promise).resolves.not.toBeCalled()
+    })
+
+    test("dragEnd does fire even if the MotionValues were physically reset", async () => {
+        const promise = new Promise<[() => void, () => void]>(resolve => {
+            const x = motionValue(0)
+            const onDragStart = jest.fn()
+            const onDragEnd = jest.fn()
+            const Component = () => (
+                <MockDrag>
+                    <motion.div
+                        drag="x"
+                        dragDirectionLock
+                        onDrag={() => x.set(0)}
+                        onDragStart={onDragStart}
+                        onDragEnd={onDragEnd}
+                        style={{ x }}
+                    />
+                </MockDrag>
+            )
+
+            const { container, rerender } = render(<Component />)
+            rerender(<Component />)
+
+            const pointer = drag(container.firstChild).to(10, 0)
+
+            sync.postRender(() => {
+                pointer.end()
+                resolve([onDragStart, onDragEnd])
+            })
+        })
+
+        const [onStart, onEnd] = await promise
+
+        expect(onStart).toBeCalledTimes(1)
+        expect(onEnd).toBeCalledTimes(1)
     })
 
     test("drag handlers aren't frozen at drag session start", async () => {
@@ -251,6 +251,45 @@ describe("dragging", () => {
         })
 
         return expect(promise).resolves.toBe(true)
+    })
+
+    test("outputs to external values if provided", async () => {
+        const promise = new Promise(resolve => {
+            const externalX = motionValue(0)
+            const externalY = motionValue(0)
+            const x = motionValue(0)
+            const y = motionValue(0)
+            const Component = () => (
+                <MockDrag>
+                    <motion.div
+                        drag
+                        _dragValueX={externalX}
+                        _dragValueY={externalY}
+                        style={{ x, y }}
+                    />
+                </MockDrag>
+            )
+
+            const { container, rerender } = render(<Component />)
+            rerender(<Component />)
+
+            const pointer = drag(container.firstChild).to(1, 1)
+
+            sync.postRender(() => {
+                pointer.to(50, 50)
+                sync.postRender(() => {
+                    pointer.end()
+                    resolve([
+                        x.get(),
+                        y.get(),
+                        externalX.get(),
+                        externalY.get(),
+                    ])
+                })
+            })
+        })
+
+        return expect(promise).resolves.toEqual([0, 0, 50, 50])
     })
 
     test("limit to x", async () => {
@@ -816,7 +855,7 @@ describe("dragging", () => {
             const Component = ({ x }: { x: MotionValue<number> }) => {
                 return (
                     <MockDrag>
-                        <motion.div drag="x" style={{ x }} />
+                        <motion.div drag="x" style={{ x, y: 0 }} />
                     </MockDrag>
                 )
             }

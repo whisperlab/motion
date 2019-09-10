@@ -11,15 +11,46 @@ import { Drag } from "./drag"
 import { parseDomVariant } from "../../dom/parse-dom-variant"
 import { MotionValuesMap } from "../../motion/utils/use-motion-values"
 import { resolveCurrent } from "../../value/utils/resolve-values"
-import { Position } from "./position"
+import { Layout } from "./layout"
 import { isValidMotionProp } from "../utils/valid-prop"
 import { getAnimationComponent } from "./animation"
+import { Exit } from "./exit"
 
-function stripMotionProps(props: MotionProps) {
+let isPropValid = (key: string) => !isValidMotionProp(key)
+
+/**
+ * Emotion and Styled Components both allow users to pass through arbitrary props to their components
+ * to dynamically generate CSS. They both use the `@emotion/is-prop-valid` package to determine which
+ * of these should be passed to the underlying DOM node.
+ *
+ * However, when styling a Motion component `styled(motion.div)`, both packages pass through *all* props
+ * as it's seen as an arbitrary component rather than a DOM node. Motion only allows arbitrary props
+ * passed through the `custom` prop so it doesn't *need* the payload or computational overhead of
+ * `@emotion/is-prop-valid`, however to fix this problem we need to use it.
+ *
+ * By making it an optionalDependency we can offer this functionality only in the situations where it's
+ * actually required.
+ */
+try {
+    const emotionIsPropValid = require("@emotion/is-prop-valid").default
+
+    isPropValid = (key: string) => {
+        // Handle events explicitly as Emotion validates them all as true
+        if (key.startsWith("on")) {
+            return !isValidMotionProp(key)
+        } else {
+            return emotionIsPropValid(key)
+        }
+    }
+} catch {
+    // We don't need to actually do anything here - the fallback is the existing `isPropValid`.
+}
+
+function filterValidProps(props: MotionProps) {
     const domProps = {}
 
     for (const key in props) {
-        if (!isValidMotionProp(key)) {
+        if (isPropValid(key)) {
             domProps[key] = props[key]
         }
     }
@@ -29,12 +60,19 @@ function stripMotionProps(props: MotionProps) {
 
 const buildSVGProps = (values: MotionValuesMap, style: CSSProperties) => {
     const motionValueStyles = resolveCurrent(values)
-    const props = buildSVGAttrs(motionValueStyles)
+    const props = buildSVGAttrs(
+        motionValueStyles,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        false
+    )
     props.style = { ...style, ...props.style } as any
     return props
 }
 
-const functionalityComponents = [Position, Drag, Gestures]
+const functionalityComponents = [Layout, Drag, Gestures, Exit]
 const numFunctionalityComponents = functionalityComponents.length
 
 /**
@@ -50,13 +88,14 @@ export function createDomMotionConfig<P = MotionProps>(
 
     return {
         renderComponent: (ref, style, values, props, isStatic) => {
-            const forwardProps = isDOM ? stripMotionProps(props) : props
+            const forwardedProps = isDOM ? filterValidProps(props) : props
+
             const staticVisualStyles = isSVG
                 ? buildSVGProps(values, style)
                 : { style: buildStyleAttr(values, style, isStatic) }
 
             return createElement<any>(Component, {
-                ...forwardProps,
+                ...forwardedProps,
                 ref,
                 ...staticVisualStyles,
             })
@@ -85,6 +124,7 @@ export function createDomMotionConfig<P = MotionProps>(
             ref,
             values,
             props,
+            context,
             controls,
             inherit
         ) => {
@@ -115,11 +155,12 @@ export function createDomMotionConfig<P = MotionProps>(
                     Component,
                 } = functionalityComponents[i]
 
-                if (shouldRender(props)) {
+                if (shouldRender(props, context)) {
                     activeComponents.push(
                         <Component
                             key={key}
                             {...props}
+                            parentContext={context}
                             values={values}
                             controls={controls}
                             innerRef={ref}

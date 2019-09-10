@@ -42,11 +42,13 @@ export const createMotionComponent = <P extends {}>({
     ) {
         const ref = useExternalRef(externalRef)
         const parentContext = useContext(MotionContext)
+
         const isStatic = parentContext.static || props.static || false
         const values = useMotionValues(props)
         const style = useMotionStyles(
             values,
             props.style,
+            isStatic,
             props.transformValues
         )
         const shouldInheritVariant = checkShouldInheritVariant(props)
@@ -63,6 +65,7 @@ export const createMotionComponent = <P extends {}>({
         const context = useMotionContext(
             parentContext,
             controls,
+            values,
             isStatic,
             props
         )
@@ -73,6 +76,7 @@ export const createMotionComponent = <P extends {}>({
                   ref,
                   values,
                   props,
+                  parentContext,
                   controls,
                   shouldInheritVariant
               )
