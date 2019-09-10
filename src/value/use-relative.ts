@@ -9,8 +9,8 @@ const toValue: <T>(v: MotionValue<T> | T) => T = v =>
 /**
  * UseRelative
  * @description Declare a motion value with a value dependent on multiple other values.
- * @param values An array of motion values or values.
- * @param callback A function that receives the current values and returns a computed value.
+ * @param parents An array of motion values or values.
+ * @param transform A function that receives the current values and returns a computed value.
  * @example
  * ```jsx
  * const knobHeight = useRelative(
@@ -22,40 +22,33 @@ const toValue: <T>(v: MotionValue<T> | T) => T = v =>
  *```
  */
 export function useRelative<T>(
-    values: (MotionValue<T> | T)[],
-    callback: (...values: T[]) => T
+    parents: (MotionValue<T> | T)[],
+    transform: (...parents: T[]) => T
 ) {
-    // Compute the motion values's value by running
-    // current values of its related values through
-    // the callback function
-    const getComputedValue = useCallback(
-        currentValues => callback(...currentValues.map(toValue)),
-        [callback, values]
-    )
+    // Create new motion value and initialize it with transformed value
+    const transformedValue = useMotionValue(transform(...parents.map(toValue)))
 
-    // Create new motion value and initialize with computed values
-    const computedValue = useMotionValue(getComputedValue(values))
-
-    // When values change, compute and update change listeners
+    // When transform or parents change, compute a new transformed
+    // value and add new onChange listeners
     useEffect(
         () => {
             const computeValue = () =>
-                computedValue.set(getComputedValue(values))
+                transformedValue.set(transform(...parents.map(toValue)))
 
             // Compute motion value based on new values
             computeValue()
 
-            // Add change events to each motion value, to compute the value
-            // when that motion value changes
-            const removers = values
+            // Add change events to each parent motion value, to
+            // compute the value when that motion value changes
+            const removers = parents
                 .map(v => isMotionValue(v) && v.onChange(computeValue))
                 .filter(v => v) as (() => void)[]
 
             // Return removes for change events
             return () => removers.forEach(fn => fn())
         },
-        [values]
+        [parents, transform]
     )
 
-    return computedValue
+    return transformedValue
 }
