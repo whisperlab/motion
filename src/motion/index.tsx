@@ -1,7 +1,7 @@
 import { createMotionComponent } from "./component"
 import { createDomMotionConfig } from "./functionality/dom"
+import * as React from "react"
 import {
-    ComponentType,
     ReactHTML,
     DetailedHTMLFactory,
     HTMLAttributes,
@@ -10,8 +10,8 @@ import {
     SVGAttributes,
     ForwardRefExoticComponent,
 } from "react"
-import { HTMLElements, htmlElements } from "./utils/supported-elements"
-import { svgElements, SVGElements } from "./utils/supported-elements"
+import { HTMLElements } from "./utils/supported-elements"
+import { SVGElements } from "./utils/supported-elements"
 import { MotionProps, MakeMotion } from "./types"
 import { Omit } from "../types"
 
@@ -21,26 +21,17 @@ export { useExternalRef } from "./utils/use-external-ref"
 export { ValueAnimationControls } from "../animation/ValueAnimationControls"
 export { createMotionComponent }
 
-export const htmlMotionComponents: HTMLMotionComponents = htmlElements.reduce(
-    (acc, Component) => {
-        const config = createDomMotionConfig(Component)
-        // Suppress "Expression produces a union type that is too complex to represent" error
-        // @ts-ignore
-        acc[Component] = createMotionComponent(config)
-        return acc
-    },
-    {} as HTMLMotionComponents
-)
+type CustomMotionComponent = {
+    custom: <Props>(custom: React.ComponentType<Props>) => void
+}
 
-export const svgMotionComponents: SVGMotionComponents = svgElements.reduce(
-    (acc, Component) => {
-        // Suppress "Expression produces a union type that is too complex to represent" error
-        // @ts-ignore
-        acc[Component] = createMotionComponent(createDomMotionConfig(Component))
-        return acc
-    },
-    {} as SVGMotionComponents
-)
+type Motion = HTMLMotionComponents & SVGMotionComponents & CustomMotionComponent
+
+const componentCache = new Map<string, any>()
+
+function createCustomComponent<P>(Component: string | React.ComponentType<P>) {
+    createMotionComponent(createDomMotionConfig(Component))
+}
 
 /**
  * HTML & SVG components, optimised for use with gestures and animation. These can be used as
@@ -61,26 +52,22 @@ export const svgMotionComponents: SVGMotionComponents = svgElements.reduce(
  *
  * @public
  */
-export const motion = {
-    /**
-     * Convert a custom React component into a `motion` component.
-     *
-     * ```jsx
-     * const Component = React.forwardRef((props: Props, ref) => {
-     *   return <div ref={ref} />
-     * })
-     *
-     * const MotionComponent = motion.custom<Props>(Component)
-     * ```
-     *
-     * @param Component
-     */
-    custom: function custom<Props>(Component: ComponentType<Props>) {
-        return createMotionComponent<Props>(createDomMotionConfig(Component))
-    },
-    ...htmlMotionComponents,
-    ...svgMotionComponents,
-}
+export const motion = new Proxy(
+    {},
+    {
+        get: (_target, key: string) => {
+            if (key === "custom") {
+                return createCustomComponent
+            } else if (componentCache.has(key)) {
+                return componentCache.get(key)
+            } else {
+                const componentFactory = createCustomComponent(key)
+                componentCache.set(key, componentFactory)
+                return componentFactory
+            }
+        },
+    }
+) as Motion
 
 type UnwrapFactoryAttributes<F> = F extends DetailedHTMLFactory<infer P, any>
     ? P

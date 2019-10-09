@@ -1,6 +1,6 @@
 // TODO: Move this file to `src/dom/`
 import * as React from "react"
-import { createElement, ComponentType, CSSProperties } from "react"
+import { createElement, CSSProperties } from "react"
 import styler, { buildSVGAttrs } from "stylefire"
 import { MotionProps } from "../types"
 import { buildStyleAttr } from "../utils/use-styles"
@@ -81,7 +81,7 @@ const numFunctionalityComponents = functionalityComponents.length
  * @internal
  */
 export function createDomMotionConfig<P = MotionProps>(
-    Component: string | ComponentType<P>
+    Component: string | React.ComponentType<P>
 ): MotionComponentConfig {
     const isDOM = typeof Component === "string"
     const isSVG = isDOM && svgElements.indexOf(Component as any) !== -1

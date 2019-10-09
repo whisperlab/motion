@@ -1,4 +1,5 @@
-import { RefObject, ComponentType, CSSProperties, ReactElement } from "react"
+import * as React from "react"
+import { RefObject, CSSProperties, ReactElement } from "react"
 import { MotionProps } from "../types"
 import { ValueAnimationControls } from "../../animation/ValueAnimationControls"
 import { MotionValuesMap } from "../utils/use-motion-values"
@@ -17,7 +18,7 @@ export interface FunctionalComponentDefinition {
         props: MotionProps,
         parentContext: MotionContextProps
     ) => boolean
-    Component: ComponentType<FunctionalProps>
+    Component: React.ComponentType<FunctionalProps>
 }
 
 export type LoadFunctionalityComponents<P = {}> = (
