@@ -71,12 +71,18 @@ describe("motion component rendering and styles", () => {
         )
         const MotionComponent = motion.custom(Component)
 
-        const promise = new Promise<Element>(resolve => {
+        const promise = new Promise<HTMLButtonElement>(resolve => {
             const { rerender } = render(
-                <MotionComponent foo={0} ref={(ref: Element) => resolve(ref)} />
+                <MotionComponent
+                    foo={0}
+                    ref={(ref: HTMLButtonElement) => resolve(ref)}
+                />
             )
             rerender(
-                <MotionComponent foo={0} ref={(ref: Element) => resolve(ref)} />
+                <MotionComponent
+                    foo={0}
+                    ref={(ref: HTMLButtonElement) => resolve(ref)}
+                />
             )
         })
 
