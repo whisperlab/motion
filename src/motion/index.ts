@@ -23,13 +23,22 @@ export { createMotionComponent }
 
 type CustomMotionComponent = {
     custom: <Props>(
-        custom: React.ComponentType<Props>
+        custom: React.ComponentType<Props> | string
     ) => React.ForwardRefExoticComponent<
         Props & MotionProps & React.RefAttributes<Element>
     >
 }
 
-type Motion = HTMLMotionComponents & SVGMotionComponents & CustomMotionComponent
+interface CustomElementComponent {
+    [key: string]: React.ForwardRefExoticComponent<
+        MotionProps & React.RefAttributes<Element>
+    >
+}
+
+type Motion = HTMLMotionComponents &
+    SVGMotionComponents &
+    CustomMotionComponent &
+    CustomElementComponent
 
 const componentCache = new Map<string, any>()
 

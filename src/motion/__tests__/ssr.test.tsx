@@ -37,6 +37,18 @@ describe("ssr", () => {
         )
     })
 
+    test("correctly renders custom HTML tag", () => {
+        const y = motionValue(200)
+        const CustomElement = motion["element-test"]
+        const div = renderToString(
+            <CustomElement initial={{ x: 100 }} style={{ y }} />
+        )
+
+        expect(div).toBe(
+            '<element-test style="transform:translateX(100px) translateY(200px) translateZ(0)"></element-test>'
+        )
+    })
+
     test("correctly renders SVG", () => {
         const cx = motionValue(100)
         const pathLength = motionValue(100)
