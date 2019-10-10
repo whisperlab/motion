@@ -22,7 +22,11 @@ export { ValueAnimationControls } from "../animation/ValueAnimationControls"
 export { createMotionComponent }
 
 type CustomMotionComponent = {
-    custom: <Props>(custom: React.ComponentType<Props>) => void
+    custom: <Props>(
+        custom: React.ComponentType<Props>
+    ) => React.ForwardRefExoticComponent<
+        Props & MotionProps & React.RefAttributes<Element>
+    >
 }
 
 type Motion = HTMLMotionComponents & SVGMotionComponents & CustomMotionComponent
@@ -30,7 +34,7 @@ type Motion = HTMLMotionComponents & SVGMotionComponents & CustomMotionComponent
 const componentCache = new Map<string, any>()
 
 function createCustomComponent<P>(Component: string | React.ComponentType<P>) {
-    createMotionComponent(createDomMotionConfig(Component))
+    return createMotionComponent(createDomMotionConfig(Component))
 }
 
 /**

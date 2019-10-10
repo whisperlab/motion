@@ -61,8 +61,11 @@ describe("motion component rendering and styles", () => {
     })
 
     it("renders custom component", async () => {
+        interface Props {
+            foo: number
+        }
         const Component = React.forwardRef(
-            (_props, ref: React.RefObject<HTMLButtonElement>) => (
+            (_props: Props, ref: React.RefObject<HTMLButtonElement>) => (
                 <button type="submit" disabled ref={ref} />
             )
         )
@@ -70,9 +73,11 @@ describe("motion component rendering and styles", () => {
 
         const promise = new Promise<Element>(resolve => {
             const { rerender } = render(
-                <MotionComponent ref={ref => resolve(ref as Element)} />
+                <MotionComponent foo={0} ref={(ref: Element) => resolve(ref)} />
             )
-            rerender(<Component />)
+            rerender(
+                <MotionComponent foo={0} ref={(ref: Element) => resolve(ref)} />
+            )
         })
 
         return expect(promise).resolves.toHaveAttribute("disabled")
